@@ -75,7 +75,13 @@ export default function RegisterPage() {
         }),
       });
 
-      const data = await res.json();
+      let data;
+      try {
+        const text = await res.text();
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`Server returned an invalid response (500 Error). Please check Vercel Logs.`);
+      }
       
       if (!res.ok) {
         throw new Error(data.error || 'Registration failed');

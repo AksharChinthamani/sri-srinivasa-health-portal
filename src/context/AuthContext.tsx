@@ -70,7 +70,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ token, name: userCredential.user.displayName }),
     });
     
-    const data = await res.json();
+    let data;
+    try {
+      const text = await res.text();
+      data = JSON.parse(text);
+    } catch(e) {
+      throw new Error('Server returned an invalid response. Please check Vercel Logs.');
+    }
     if (!res.ok) throw new Error(data.error || 'Login failed');
     
     setUser(data.user);

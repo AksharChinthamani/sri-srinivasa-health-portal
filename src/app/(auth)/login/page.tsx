@@ -40,7 +40,18 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      const res = await login(email, password);
+      let data;
+      try {
+        const text = await res.text();
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`Server returned an invalid response (500 Error). Please check Vercel Logs.`);
+      }
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
     } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {

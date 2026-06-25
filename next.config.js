@@ -17,7 +17,7 @@ const nextConfig = {
   // Force Prisma to be treated as an external package during build
   // This prevents Vercel from trying to connect to the DB at build time
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
+    serverComponentsExternalPackages: ['@prisma/client', 'prisma', 'firebase-admin'],
   },
 };
 
