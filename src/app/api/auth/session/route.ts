@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
       user: { id: uid, name: displayName, email, role },
     });
   } catch (error: any) {
-    console.error('Session API Error FULL OBJECT:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+    console.error('Session API Error FULL OBJECT:', String(error.stack || error));
     console.error('Token received:', typeof req !== 'undefined' ? 'exists' : 'undefined');
     return NextResponse.json({ error: 'Auth failed', detail: error?.message, code: error?.code }, { status: 401 });
   }
