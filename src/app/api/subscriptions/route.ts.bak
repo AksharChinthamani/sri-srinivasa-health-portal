@@ -1,0 +1,161 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db/prisma';
+import { getUserFromRequest } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: NextRequest) {
+  try {
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    let where: any = {};
+    if (user.role === 'PATIENT') {
+      where.userId = user.id;
+    }
+
+    const subscriptions = await prisma.subscription.findMany({
+      where,
+      include: {
+        medicine: true,
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return NextResponse.json(subscriptions);
+  } catch (error) {
+    console.error('Fetch subscriptions error:', error);
+    return NextResponse.json({ error: 'Failed to fetch subscriptions' }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { medicineId, quantity, frequency } = body;
+
+    if (!medicineId || !quantity || !frequency) {
+      return NextResponse.json({ error: 'medicineId, quantity, and frequency are required' }, { status: 400 });
+    }
+
+    const medicine = await prisma.medicine.findUnique({ where: { id: medicineId } });
+    if (!medicine) {
+      return NextResponse.json({ error: 'Medicine not found' }, { status: 404 });
+    }
+
+    const nextDispatch = new Date();
+    const days = frequency === 'Bi-Monthly' || frequency === 'bi-monthly' ? 60 : 30;
+    nextDispatch.setDate(nextDispatch.getDate() + days);
+
+    const subscription = await prisma.subscription.create({
+      data: {
+        userId: user.id,
+        medicineId,
+        quantity: Number(quantity) || 1,
+        frequency,
+        nextDispatch,
+        status: 'ACTIVE',
+      },
+      include: {
+        medicine: true,
+      },
+    });
+
+    return NextResponse.json(subscription);
+  } catch (error) {
+    console.error('Create subscription error:', error);
+    return NextResponse.json({ error: 'Failed to create subscription' }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { id, status } = body;
+
+    if (!id || !status) {
+      return NextResponse.json({ error: 'id and status are required' }, { status: 400 });
+    }
+
+    const sub = await prisma.subscription.findUnique({ where: { id } });
+    if (!sub) {
+      return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
+    }
+
+    if (user.role === 'PATIENT' && sub.userId !== user.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const updateData: any = { status };
+    
+    if (status === 'DISPATCHED' && ['ADMIN', 'PHARMACIST'].includes(user.role)) {
+      const nextDispatch = new Date();
+      const days = sub.frequency === 'Bi-Monthly' || sub.frequency === 'bi-monthly' ? 60 : 30;
+      nextDispatch.setDate(nextDispatch.getDate() + days);
+      updateData.nextDispatch = nextDispatch;
+    }
+
+    const updatedSub = await prisma.subscription.update({
+      where: { id },
+      data: updateData,
+      include: {
+        medicine: true,
+      },
+    });
+
+    return NextResponse.json(updatedSub);
+  } catch (error) {
+    console.error('Update subscription error:', error);
+    return NextResponse.json({ error: 'Failed to update subscription' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    }
+
+    const sub = await prisma.subscription.findUnique({ where: { id } });
+    if (!sub) {
+      return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
+    }
+
+    if (user.role === 'PATIENT' && sub.userId !== user.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await prisma.subscription.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Delete subscription error:', error);
+    return NextResponse.json({ error: 'Failed to delete subscription' }, { status: 500 });
+  }
+}

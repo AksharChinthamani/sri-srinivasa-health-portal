@@ -1,0 +1,37 @@
+export const dynamic = 'force-dynamic';
+
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db/prisma';
+import { getUserFromRequest } from '@/lib/auth';
+
+export async function POST(req: NextRequest) {
+  try {
+    const user = await getUserFromRequest(req);
+    if (!user || user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const nextToken = await prisma.queueToken.findFirst({
+      where: { status: 'WAITING' },
+      orderBy: { tokenNumber: 'asc' },
+    });
+    
+    if (!nextToken) {
+      return NextResponse.json({ error: 'No waiting tokens' }, { status: 400 });
+    }
+
+    const updated = await prisma.queueToken.update({
+      where: { id: nextToken.id },
+      data: { status: 'CALLED', calledAt: new Date() },
+      include: { patient: true },
+    });
+    
+    // Trigger SMS/WhatsApp here (Twilio, etc.) – placeholder
+    console.log(`Calling token ${updated.tokenNumber} for ${updated.patient.name}`);
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error('Call next token error:', error);
+    return NextResponse.json({ error: 'Failed to call next token' }, { status: 500 });
+  }
+}

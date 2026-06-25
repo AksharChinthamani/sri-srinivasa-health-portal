@@ -1,0 +1,46 @@
+:root {
+  /* Brand Colors - Premium Teal/Emerald aesthetic */
+  --color-primary-50: 167 85% 97%;
+  --color-primary-100: 167 80% 90%;
+  --color-primary-200: 167 82% 80%;
+  --color-primary-300: 167 80% 65%;
+  --color-primary-400: 167 75% 50%;
+  --color-primary-500: 167 85% 40%;
+  --color-primary-600: 167 90% 32%;
+  --color-primary-700: 167 85% 25%;
+  --color-primary-800: 167 80% 20%;
+  --color-primary-900: 167 75% 15%;
+  --color-primary-950: 167 80% 10%;
+
+  /* Semantic Colors */
+  --color-success: 142 71% 45%;
+  --color-success-foreground: 144 100% 98%;
+  --color-warning: 38 92% 50%;
+  --color-warning-foreground: 48 100% 96%;
+  --color-error: 0 84% 60%;
+  --color-error-foreground: 0 100% 98%;
+  --color-info: 221 83% 53%;
+  --color-info-foreground: 210 100% 98%;
+
+  /* Background & Surface */
+  --color-background: 210 40% 98%; /* Soft slate tint */
+  --color-surface: 0 0% 100%;
+  --color-surface-hover: 210 20% 96%;
+  --color-surface-active: 210 20% 93%;
+
+  /* Text & Content */
+  --color-foreground: 222 47% 11%;
+  --color-muted: 215 16% 47%;
+  --color-muted-foreground: 215 20% 65%;
+
+  /* Borders & Dividers */
+  --color-border: 214 32% 91%;
+  --color-ring: 167 85% 40%;
+
+  /* Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+}

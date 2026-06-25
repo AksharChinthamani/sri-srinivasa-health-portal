@@ -1,0 +1,25 @@
+export const dynamic = 'force-dynamic';
+
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db/prisma';
+import { getUserFromRequest } from '@/lib/auth';
+
+export async function PUT(req: NextRequest) {
+  try {
+    const { id } = await req.json();
+    const user = await getUserFromRequest(req);
+    
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const updated = await prisma.queueToken.update({
+      where: { id },
+      data: { status: 'COMPLETED', completedAt: new Date() },
+    });
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error('Complete token error:', error);
+    return NextResponse.json({ error: 'Failed to complete token' }, { status: 500 });
+  }
+}

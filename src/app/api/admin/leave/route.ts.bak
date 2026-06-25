@@ -1,0 +1,48 @@
+export const dynamic = 'force-dynamic';
+
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db/prisma';
+import { getUserFromRequest } from '@/lib/auth';
+
+export async function POST(req: NextRequest) {
+  try {
+    const user = await getUserFromRequest(req);
+    if (!user || user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { staffId, startDate, endDate, reason } = await req.json();
+    const leave = await prisma.leaveRequest.create({
+      data: {
+        staffId,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        reason,
+        status: 'PENDING',
+      },
+    });
+    return NextResponse.json(leave);
+  } catch (error) {
+    console.error('Create leave request error:', error);
+    return NextResponse.json({ error: 'Failed to create leave request' }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const user = await getUserFromRequest(req);
+    if (!user || user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id, status } = await req.json();
+    const updated = await prisma.leaveRequest.update({
+      where: { id },
+      data: { status },
+    });
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error('Update leave request error:', error);
+    return NextResponse.json({ error: 'Failed to update leave request' }, { status: 500 });
+  }
+}

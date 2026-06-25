@@ -1,0 +1,16 @@
+.dark {
+  /* Background & Surface */
+  --color-background: 222 47% 11%;
+  --color-surface: 222 47% 15%;
+  --color-surface-hover: 222 47% 20%;
+  --color-surface-active: 222 47% 25%;
+
+  /* Text & Content */
+  --color-foreground: 210 40% 98%;
+  --color-muted: 215 20% 65%;
+  --color-muted-foreground: 215 16% 47%;
+
+  /* Borders & Dividers */
+  --color-border: 217 32% 17%;
+  --color-ring: 167 80% 65%;
+}

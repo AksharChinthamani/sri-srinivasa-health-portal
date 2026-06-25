@@ -1,0 +1,81 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db/prisma';
+import { getUserFromRequest } from '@/lib/auth';
+import { INVENTORY_THRESHOLDS } from '@/lib/utils/constants';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: NextRequest) {
+  try {
+    const user = await getUserFromRequest(req);
+    if (!user || user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const expiringLimit = new Date(today);
+    expiringLimit.setDate(expiringLimit.getDate() + INVENTORY_THRESHOLDS.EXPIRY_DAYS);
+
+    // Fetch low stock active medicines
+    const lowStockMeds = await prisma.medicine.findMany({
+      where: {
+        active: true,
+        stock: { lte: INVENTORY_THRESHOLDS.LOW_STOCK },
+      },
+      select: { name: true, stock: true },
+    });
+
+    // Fetch expiring soon active medicines
+    const expiringMeds = await prisma.medicine.findMany({
+      where: {
+        active: true,
+        expiryDate: {
+          gt: today,
+          lte: expiringLimit,
+        },
+      },
+      select: { name: true, expiryDate: true },
+    });
+
+    // Fetch already expired active medicines
+    const expiredMeds = await prisma.medicine.findMany({
+      where: {
+        active: true,
+        expiryDate: { lte: today },
+      },
+      select: { name: true },
+    });
+
+    const alerts: { icon: string; message: string }[] = [];
+
+    expiredMeds.forEach((med) => {
+      alerts.push({
+        icon: '🚨',
+        message: `Medicine expired: ${med.name} is in inventory but has passed its expiry date.`,
+      });
+    });
+
+    expiringMeds.forEach((med) => {
+      alerts.push({
+        icon: '⚠️',
+        message: `Expiring soon: ${med.name} expires within ${INVENTORY_THRESHOLDS.EXPIRY_DAYS} days.`,
+      });
+    });
+
+    lowStockMeds.forEach((med) => {
+      alerts.push({
+        icon: '📦',
+        message: med.stock === 0 
+          ? `Out of stock: ${med.name} is completely out of stock.`
+          : `Low stock: ${med.name} has only ${med.stock} units left.`,
+      });
+    });
+
+    return NextResponse.json({ alerts });
+  } catch (error) {
+    console.error('Fetch alerts error:', error);
+    return NextResponse.json({ error: 'Failed to fetch alerts' }, { status: 500 });
+  }
+}
