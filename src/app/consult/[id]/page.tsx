@@ -71,6 +71,7 @@ export default function VirtualConsultPage({ params }: { params: { id: string } 
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [showEndModal, setShowEndModal] = useState(false);
   const [rightTab, setRightTab] = useState<'consultation' | 'chat'>('consultation');
+  const [isPostConsult, setIsPostConsult] = useState(false);
 
   // ── Chat State ─────────────────────────────────────────────
   const [chatMessages, setChatMessages] = useState<{ sender: string; text: string; time: string }[]>([
@@ -144,7 +145,11 @@ export default function VirtualConsultPage({ params }: { params: { id: string } 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       toastContext?.addToast('Consultation completed successfully!', 'success');
-      router.push(isDoctor ? '/doctor/dashboard' : '/patient/dashboard');
+      if (isDoctor) {
+        setIsPostConsult(true);
+      } else {
+        router.push('/patient/dashboard');
+      }
     },
     onError: (err: any) => {
       toastContext?.addToast(err.message || 'Error completing appointment', 'error');
@@ -301,6 +306,153 @@ Doctor: Okay, let me note down your vitals. Temperature is normal at 98.6F, and 
   }
 
   const remoteName = isDoctor ? appointment.patient?.user?.name || 'Patient' : appointment.doctor?.user?.name || 'Doctor';
+
+  // ── Post Consultation View ──────────────────────────────
+  if (isPostConsult) {
+    return (
+      <div className="min-h-screen bg-slate-950 p-6 md:p-12 overflow-y-auto text-slate-200">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">{getTranslation(language, 'auto.post_consultation_summary') || 'Post-Consultation Summary'}</h1>
+              <p className="text-slate-400">{appointment.patient?.user?.name}</p>
+            </div>
+            <button 
+              onClick={() => router.push('/doctor/dashboard')}
+              className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold transition flex items-center justify-center gap-2"
+            >
+              <span>{getTranslation(language, 'auto.finish_return_to_dashboard') || 'Finish & Return'}</span>
+              <CheckCircle2 className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6">
+            {/* AI SOAP Notes */}
+            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700/50 relative overflow-hidden">
+              <div className="absolute top-3 right-3">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-teal-950 text-teal-400 border border-teal-850">
+                  {getTranslation(language, 'auto.ai_assisted')}
+                </span>
+              </div>
+              <h3 className="text-xs uppercase tracking-wider text-slate-400 font-bold mb-3">{getTranslation(language, 'auto.clinical_notes_soap')}</h3>
+              {soapNote ? (
+                <div className="space-y-3">
+                  <textarea
+                    value={soapNote}
+                    onChange={(e) => setSoapNote(e.target.value)}
+                    className="w-full h-40 bg-slate-900/80 p-3 rounded-lg text-xs font-mono text-teal-100 border border-slate-700 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 resize-none"
+                  />
+                  <button
+                    onClick={() => saveSoapMutation.mutate(soapNote)}
+                    disabled={saveSoapMutation.isPending}
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg text-xs transition flex items-center justify-center gap-1.5"
+                  >
+                    {saveSoapMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                    {getTranslation(language, 'auto.save_notes_to_db')}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => generateSoapMutation.mutate()}
+                  disabled={generateSoapMutation.isPending}
+                  className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white py-2 rounded-lg text-xs transition-colors flex justify-center items-center gap-2"
+                >
+                  {generateSoapMutation.isPending ? (
+                    <><Loader2 className="w-4 h-4 animate-spin text-teal-400" /><span>{getTranslation(language, 'auto.analyzing_session_transcript')}</span></>
+                  ) : (
+                    <><FileText className="w-4 h-4 text-teal-400" /><span>{getTranslation(language, 'auto.generate_notes_from_transcript')}</span></>
+                  )}
+                </button>
+              )}
+            </div>
+
+            {/* E-Prescription */}
+            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700/50 space-y-4">
+              <h3 className="text-xs uppercase tracking-wider text-slate-400 font-bold">{getTranslation(language, 'auto.write_e_prescription')}</h3>
+              <div className="space-y-3">
+                {prescribedMeds.map((med, index) => (
+                  <div key={index} className="p-3 bg-slate-900/60 rounded-lg border border-slate-800 space-y-2 relative">
+                    {prescribedMeds.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeMedicineField(index)}
+                        className="absolute top-2 right-2 text-rose-500 hover:text-rose-400"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <div>
+                      <label className="text-[10px] text-slate-400 font-bold block mb-1">{getTranslation(language, 'auto.medicine_name')}</label>
+                      <select
+                        value={med.medicineName}
+                        onChange={(e) => handleMedicineChange(index, 'medicineName', e.target.value)}
+                        className="w-full bg-slate-800 px-2.5 py-1.5 rounded text-xs border border-slate-700 outline-none focus:border-teal-500"
+                      >
+                        <option value="">{getTranslation(language, 'auto.select_from_inventory')}</option>
+                        {medicinesList.map((m) => (
+                          <option key={m.id} value={m.name} disabled={m.stock <= 0}>
+                            {m.name} ({m.category}) {m.stock <= 0 ? '[OUT OF STOCK]' : `[Stock: ${m.stock}]`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['dosage', 'frequency', 'duration'] as const).map((field) => (
+                        <div key={field}>
+                          <label className="text-[10px] text-slate-400 block mb-0.5 capitalize">{field}</label>
+                          <input
+                            type="text"
+                            value={med[field]}
+                            onChange={(e) => handleMedicineChange(index, field, e.target.value)}
+                            className="w-full bg-slate-800 px-2 py-1 rounded text-xs border border-slate-700 outline-none"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">{getTranslation(language, 'auto.special_instructions')}</label>
+                      <input
+                        type="text"
+                        value={med.instructions}
+                        onChange={(e) => handleMedicineChange(index, 'instructions', e.target.value)}
+                        className="w-full bg-slate-800 px-2 py-1 rounded text-xs border border-slate-700 outline-none"
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addMedicineField}
+                  className="w-full py-1.5 border border-dashed border-slate-700 text-slate-400 hover:text-white rounded-lg text-xs flex justify-center items-center gap-1 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" /> {getTranslation(language, 'auto.add_another_medicine')}
+                </button>
+
+                <div className="pt-2">
+                  <label className="text-[10px] text-slate-400 font-bold block mb-1">{getTranslation(language, 'auto.prescription_remarks_notes')}</label>
+                  <textarea
+                    value={rxNotes}
+                    onChange={(e) => setRxNotes(e.target.value)}
+                    className="w-full h-16 bg-slate-900/60 p-2.5 rounded-lg text-xs border border-slate-700 outline-none focus:border-teal-500 resize-none"
+                  />
+                </div>
+
+                <button
+                  onClick={() => prescriptionMutation.mutate()}
+                  disabled={prescriptionMutation.isPending || prescribedMeds.every((m) => m.medicineName.trim() === '')}
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-md disabled:opacity-50"
+                >
+                  {prescriptionMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  {getTranslation(language, 'auto.submit_send_to_pharmacy')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Render ────────────────────────────────────────────────
   return (
@@ -521,127 +673,7 @@ Doctor: Okay, let me note down your vitals. Temperature is normal at 98.6F, and 
                   </div>
                 </div>
 
-                {/* AI SOAP Notes */}
-                <div className="bg-slate-800 rounded-xl p-4 border border-slate-700/50 relative overflow-hidden">
-                  <div className="absolute top-3 right-3">
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-teal-950 text-teal-400 border border-teal-850">
-                      {getTranslation(language, 'auto.ai_assisted')}
-                    </span>
-                  </div>
-                  <h3 className="text-xs uppercase tracking-wider text-slate-400 font-bold mb-3">{getTranslation(language, 'auto.clinical_notes_soap')}</h3>
-                  {soapNote ? (
-                    <div className="space-y-3">
-                      <textarea
-                        value={soapNote}
-                        onChange={(e) => setSoapNote(e.target.value)}
-                        className="w-full h-40 bg-slate-900/80 p-3 rounded-lg text-xs font-mono text-teal-100 border border-slate-700 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 resize-none"
-                      />
-                      <button
-                        onClick={() => saveSoapMutation.mutate(soapNote)}
-                        disabled={saveSoapMutation.isPending}
-                        className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg text-xs transition flex items-center justify-center gap-1.5"
-                      >
-                        {saveSoapMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-                        {getTranslation(language, 'auto.save_notes_to_db')}
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => generateSoapMutation.mutate()}
-                      disabled={generateSoapMutation.isPending}
-                      className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white py-2 rounded-lg text-xs transition-colors flex justify-center items-center gap-2"
-                    >
-                      {generateSoapMutation.isPending ? (
-                        <><Loader2 className="w-4 h-4 animate-spin text-teal-400" /><span>{getTranslation(language, 'auto.analyzing_session_transcript')}</span></>
-                      ) : (
-                        <><FileText className="w-4 h-4 text-teal-400" /><span>{getTranslation(language, 'auto.generate_notes_from_transcript')}</span></>
-                      )}
-                    </button>
-                  )}
-                </div>
-
-                {/* E-Prescription */}
-                <div className="bg-slate-800 rounded-xl p-4 border border-slate-700/50 space-y-4">
-                  <h3 className="text-xs uppercase tracking-wider text-slate-400 font-bold">{getTranslation(language, 'auto.write_e_prescription')}</h3>
-                  <div className="space-y-3">
-                    {prescribedMeds.map((med, index) => (
-                      <div key={index} className="p-3 bg-slate-900/60 rounded-lg border border-slate-800 space-y-2 relative">
-                        {prescribedMeds.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeMedicineField(index)}
-                            className="absolute top-2 right-2 text-rose-500 hover:text-rose-400"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        <div>
-                          <label className="text-[10px] text-slate-400 font-bold block mb-1">{getTranslation(language, 'auto.medicine_name')}</label>
-                          <select
-                            value={med.medicineName}
-                            onChange={(e) => handleMedicineChange(index, 'medicineName', e.target.value)}
-                            className="w-full bg-slate-800 px-2.5 py-1.5 rounded text-xs border border-slate-700 outline-none focus:border-teal-500"
-                          >
-                            <option value="">{getTranslation(language, 'auto.select_from_inventory')}</option>
-                            {medicinesList.map((m) => (
-                              <option key={m.id} value={m.name} disabled={m.stock <= 0}>
-                                {m.name} ({m.category}) {m.stock <= 0 ? '[OUT OF STOCK]' : `[Stock: ${m.stock}]`}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          {(['dosage', 'frequency', 'duration'] as const).map((field) => (
-                            <div key={field}>
-                              <label className="text-[10px] text-slate-400 block mb-0.5 capitalize">{field}</label>
-                              <input
-                                type="text"
-                                value={med[field]}
-                                onChange={(e) => handleMedicineChange(index, field, e.target.value)}
-                                className="w-full bg-slate-800 px-2 py-1 rounded text-xs border border-slate-700 outline-none"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-slate-400 block mb-0.5">{getTranslation(language, 'auto.special_instructions')}</label>
-                          <input
-                            type="text"
-                            value={med.instructions}
-                            onChange={(e) => handleMedicineChange(index, 'instructions', e.target.value)}
-                            className="w-full bg-slate-800 px-2 py-1 rounded text-xs border border-slate-700 outline-none"
-                          />
-                        </div>
-                      </div>
-                    ))}
-
-                    <button
-                      type="button"
-                      onClick={addMedicineField}
-                      className="w-full py-1.5 border border-dashed border-slate-700 text-slate-400 hover:text-white rounded-lg text-xs flex justify-center items-center gap-1 transition"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> {getTranslation(language, 'auto.add_another_medicine')}
-                    </button>
-
-                    <div className="pt-2">
-                      <label className="text-[10px] text-slate-400 font-bold block mb-1">{getTranslation(language, 'auto.prescription_remarks_notes')}</label>
-                      <textarea
-                        value={rxNotes}
-                        onChange={(e) => setRxNotes(e.target.value)}
-                        className="w-full h-16 bg-slate-900/60 p-2.5 rounded-lg text-xs border border-slate-700 outline-none focus:border-teal-500 resize-none"
-                      />
-                    </div>
-
-                    <button
-                      onClick={() => prescriptionMutation.mutate()}
-                      disabled={prescriptionMutation.isPending || prescribedMeds.every((m) => m.medicineName.trim() === '')}
-                      className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-md disabled:opacity-50"
-                    >
-                      {prescriptionMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                      {getTranslation(language, 'auto.submit_send_to_pharmacy')}
-                    </button>
-                  </div>
-                </div>
+                {/* AI SOAP Notes & E-Prescription have been moved to the Post Consultation View */}
               </>
             ) : (
               /* ── PATIENT SIDE ─────────────────────────────── */
