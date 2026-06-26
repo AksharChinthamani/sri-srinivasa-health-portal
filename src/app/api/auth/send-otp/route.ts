@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
-import { Resend } from 'resend';
-
-// Initialize Resend
-// Note: Fallback to console logging if missing for local dev without key
-const resendApiKey = process.env.RESEND_API_KEY;
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
+import nodemailer from 'nodemailer';
 
 export async function POST(req: Request) {
   try {
@@ -27,10 +22,20 @@ export async function POST(req: Request) {
       createdAt: new Date().getTime(),
     });
 
-    if (resend) {
-      // Dispatch email via Resend
-      await resend.emails.send({
-        from: 'Sri Srinivasa Health Portal <onboarding@resend.dev>', // Use default resend testing domain
+    const user = process.env.GMAIL_USER;
+    const pass = process.env.GMAIL_APP_PASSWORD;
+
+    if (user && pass) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: user,
+          pass: pass,
+        },
+      });
+
+      const mailOptions = {
+        from: `Sri Srinivasa Health Portal <${user}>`,
         to: email,
         subject: 'Your Login Code',
         html: `
@@ -43,11 +48,12 @@ export async function POST(req: Request) {
             <p style="font-size: 14px; color: #666; text-align: center;">This code will expire in 5 minutes. Do not share this code with anyone.</p>
           </div>
         `,
-      });
-      console.log(`[OTP Sent to ${email}] (via Resend)`);
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log(`[OTP Sent to ${email}] (via Nodemailer)`);
     } else {
-      // Fallback: If no RESEND_API_KEY is found, just log it for debugging
-      console.warn('⚠️ No RESEND_API_KEY found in .env.local. Printing OTP to console instead:');
+      console.warn('⚠️ No GMAIL_USER or GMAIL_APP_PASSWORD found in .env.local. Printing OTP to console instead:');
       console.log('====================================');
       console.log(`Email: ${email}`);
       console.log(`OTP Code: ${otp}`);
