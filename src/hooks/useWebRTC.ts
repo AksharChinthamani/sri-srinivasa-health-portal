@@ -73,8 +73,20 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
       try {
         setConnectionState('joining');
 
-        // 1. Get local media
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        // 1. Get optimized local media for seamless performance
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            width: { ideal: 640, max: 1280 },
+            height: { ideal: 480, max: 720 },
+            frameRate: { ideal: 24, max: 30 },
+            facingMode: 'user'
+          }, 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          } 
+        });
         if (!isMounted) { 
           stream.getTracks().forEach(t => t.stop()); 
           return; 
@@ -85,8 +97,11 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
           localVideoRef.current.srcObject = stream;
         }
 
-        // 2. Create peer connection
-        const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+        // 2. Create peer connection with pre-gathering optimization
+        const pc = new RTCPeerConnection({ 
+          iceServers: ICE_SERVERS,
+          iceCandidatePoolSize: 10 // Speeds up connection time by gathering candidates early
+        });
         peerRef.current = pc;
 
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
