@@ -4,6 +4,8 @@ import { useContext } from 'react';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { sendSignInLinkToEmail } from 'firebase/auth';
+import { auth } from '@/lib/firebase/client';
 import { useAuth } from '@/context/AuthContext';
 import { FloatingLabelInput } from '@/components/ui/Input/FloatingLabelInput';
 import { Button } from '@/components/ui/Button/Button';
@@ -18,6 +20,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
   const { login, isAuthenticated, user } = useAuth();
   const router = useRouter();
 
@@ -59,6 +62,28 @@ export default function LoginPage() {
     }
   };
 
+  const handleSendMagicLink = async () => {
+    if (!email) {
+      setError('Please enter your email address first.');
+      return;
+    }
+    setError('');
+    setIsLoading(true);
+    try {
+      const actionCodeSettings = {
+        url: window.location.origin + '/verify-link',
+        handleCodeInApp: true,
+      };
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      window.localStorage.setItem('emailForSignIn', email);
+      setMagicLinkSent(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send magic link.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -71,6 +96,11 @@ export default function LoginPage() {
             {error && (
               <div className="p-3 text-sm text-error bg-error/10 rounded-md">
                 {error}
+              </div>
+            )}
+            {magicLinkSent && (
+              <div className="p-3 text-sm text-green-700 bg-green-100 rounded-md">
+                A secure login link has been sent to <strong>{email}</strong>. Please check your inbox!
               </div>
             )}
             <FloatingLabelInput
@@ -91,8 +121,8 @@ export default function LoginPage() {
             />
             
             <div className="flex items-center justify-end">
-              <Link href="#" className="text-sm text-primary hover:underline">
-                {getTranslation(language, 'auto.forgot_password')}</Link>
+              <button type="button" onClick={handleSendMagicLink} className="text-sm text-primary hover:underline bg-transparent border-none cursor-pointer">
+                {getTranslation(language, 'auto.forgot_password')}</button>
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
@@ -108,7 +138,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <Button type="button" variant="outline" className="w-full" onClick={() => console.log('Send OTP')}>
+            <Button type="button" variant="outline" className="w-full" onClick={handleSendMagicLink} disabled={isLoading}>
               {getTranslation(language, 'auto.send_otp')}</Button>
           </form>
         </CardContent>
