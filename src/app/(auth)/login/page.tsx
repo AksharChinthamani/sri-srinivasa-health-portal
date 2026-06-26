@@ -50,18 +50,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const res = await login(email, password);
-      let data;
-      try {
-        const text = await res.text();
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error(`Server returned an invalid response (500 Error). Please check Vercel Logs.`);
-      }
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
+      await login(email, password);
     } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {
@@ -188,19 +177,6 @@ export default function LoginPage() {
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? 'Signing In...' : 'Sign In'}
                 </Button>
-                
-                <div className="relative my-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-border" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-surface px-2 text-muted-foreground">{getTranslation(language, 'auto.or_continue_with')}</span>
-                  </div>
-                </div>
-
-                <Button type="button" variant="outline" className="w-full" onClick={handleSendOtp} disabled={isLoading}>
-                  {getTranslation(language, 'auto.send_otp')}
-                </Button>
               </>
             )}
 
@@ -227,19 +203,14 @@ export default function LoginPage() {
             )}
           </form>
         </CardContent>
-        {uiState === 'LOGIN' && (
-          <CardFooter className="flex flex-col items-center gap-2 text-center">
-            <p className="text-sm text-muted-foreground">
-              {getTranslation(language, 'auto.new_patient')}{' '}
-              <Link href="/register" className="text-primary hover:underline font-medium">
-                {getTranslation(language, 'auto.create_a_patient_account')}
-              </Link>
-            </p>
-            <p className="text-xs text-muted-foreground/60">
-              {getTranslation(language, 'auto.admin_pharmacist_amp_doctor_accounts_are')}
-            </p>
-          </CardFooter>
-        )}
+        <CardFooter className="flex flex-col items-center gap-2 text-center">
+          <p className="text-sm text-muted-foreground">
+            {getTranslation(language, 'auto.new_patient')}{' '}
+            <Link href="/register" className="text-primary hover:underline font-medium">
+              {getTranslation(language, 'auto.create_a_patient_account')}
+            </Link>
+          </p>
+        </CardFooter>
       </Card>
     </div>
   );

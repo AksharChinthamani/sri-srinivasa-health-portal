@@ -7,6 +7,7 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-
 const publicRoutes = [
   '/landing', '/login', '/register',
   '/api/auth/login', '/api/auth/register', '/api/auth/otp',
+  '/api/auth/send-otp', '/api/auth/verify-otp',
   '/api/auth/me', '/api/auth/logout', '/api/auth/session',
   '/api/get-medicines',
 ];
