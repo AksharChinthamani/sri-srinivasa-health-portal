@@ -138,11 +138,12 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
             transaction.set(roomRef, { hostId: userId, guestId: null });
           } else {
             const data = roomDoc.data();
-            if (data.hostId === userId) {
+            if (data.hostId === userId || data.ended) {
               role = 'host';
+              transaction.set(roomRef, { hostId: userId, guestId: null });
             } else {
               role = 'guest';
-              transaction.update(roomRef, { guestId: userId });
+              transaction.update(roomRef, { guestId: userId, ended: false });
             }
           }
         });
