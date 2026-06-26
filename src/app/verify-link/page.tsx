@@ -67,11 +67,15 @@ export default function VerifyLinkPage() {
             STAFF: '/staff/dashboard',
           };
           
-          // Note: Wait slightly to let AuthContext pick up the state change if needed
-          setTimeout(() => {
-             router.push(roleMap[role] || '/patient/dashboard');
-          }, 500);
-          
+          // Force backend token sync to set the HttpOnly cookie before redirecting
+          const token = await result.user.getIdToken();
+          await fetch('/api/auth/session', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ token, name: result.user.displayName || email.split('@')[0] }),
+          });
+
+          router.push(roleMap[role] || '/patient/dashboard');
         } catch (err: any) {
           console.error('Error signing in with email link', err);
           if (err instanceof FirebaseError && err.code === 'auth/invalid-action-code') {
