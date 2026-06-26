@@ -11,7 +11,7 @@ export default function ManageAppointmentModal({
   appointmentId: string;
 }) {
   const queryClient = useQueryClient();
-  const [mode, setMode] = useState<'options' | 'postpone'>('options');
+  const [mode, setMode] = useState<'options' | 'postpone' | 'cancel'>('options');
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
 
@@ -35,12 +35,6 @@ export default function ManageAppointmentModal({
     },
   });
 
-  const handleCancel = () => {
-    if (confirm('Are you sure you want to cancel this appointment?')) {
-      updateStatusMutation.mutate({ id: appointmentId, status: 'CANCELLED' });
-    }
-  };
-
   const handlePostpone = () => {
     if (!newDate || !newTime) return alert('Please select a new date and time');
     updateStatusMutation.mutate({ id: appointmentId, status: 'PENDING', date: newDate, time: newTime });
@@ -62,7 +56,7 @@ export default function ManageAppointmentModal({
               Postpone (Reschedule)
             </button>
             <button
-              onClick={handleCancel}
+              onClick={() => setMode('cancel')}
               className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold py-3 px-4 rounded-xl transition-colors"
             >
               Cancel Appointment
@@ -73,6 +67,27 @@ export default function ManageAppointmentModal({
             >
               Back
             </button>
+          </div>
+        )}
+
+        {mode === 'cancel' && (
+          <div className="space-y-4">
+            <p className="text-slate-600 font-medium">Are you sure you want to cancel this appointment? This action cannot be undone.</p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setMode('options')}
+                className="flex-1 bg-slate-100 text-slate-700 hover:bg-slate-200 px-4 py-2.5 rounded-xl font-bold transition-all"
+              >
+                No, Keep It
+              </button>
+              <button
+                onClick={() => updateStatusMutation.mutate({ id: appointmentId, status: 'CANCELLED' })}
+                disabled={updateStatusMutation.isPending}
+                className="flex-1 bg-rose-600 text-white hover:bg-rose-700 px-4 py-2.5 rounded-xl font-bold transition-all flex justify-center items-center"
+              >
+                {updateStatusMutation.isPending ? 'Canceling...' : 'Yes, Cancel'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -111,9 +126,9 @@ export default function ManageAppointmentModal({
               <button
                 onClick={handlePostpone}
                 disabled={updateStatusMutation.isPending}
-                className="flex-1 bg-teal-600 text-white hover:bg-teal-700 px-4 py-2.5 rounded-xl font-bold transition-all"
+                className="flex-1 bg-teal-600 text-white hover:bg-teal-700 px-4 py-2.5 rounded-xl font-bold transition-all flex justify-center items-center"
               >
-                Save
+                {updateStatusMutation.isPending ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
