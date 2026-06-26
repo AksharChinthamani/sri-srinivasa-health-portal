@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useContext, useEffect, useRef } from 'react';
+import React, { useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -238,12 +238,20 @@ Doctor: Okay, let me note down your vitals. Temperature is normal at 98.6F, and 
   // ── Handlers ─────────────────────────────────────────────
   const handleStartCall = () => setCallActive(true);
 
-  const handleEndCall = () => {
+  const handleEndCall = useCallback(() => {
     rtc.hangup();
     setShowEndModal(false);
     setCallActive(false);
     endCallMutation.mutate();
-  };
+  }, [rtc, endCallMutation]);
+
+  // End call automatically if the other peer hangs up
+  useEffect(() => {
+    if (rtc.connectionState === 'disconnected' && callActive) {
+      toastContext?.addToast('The other participant has ended the call.', 'info');
+      handleEndCall();
+    }
+  }, [rtc.connectionState, callActive, handleEndCall, toastContext]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -437,16 +445,7 @@ Doctor: Okay, let me note down your vitals. Temperature is normal at 98.6F, and 
             <MessageSquare className="w-5 h-5" />
           </button>
 
-          {!callActive && (
-            <button
-              id="join-call-btn"
-              onClick={handleStartCall}
-              className="px-5 h-12 rounded-full bg-teal-600 hover:bg-teal-500 text-white flex items-center gap-2 font-semibold text-sm transition-all shadow-lg"
-            >
-              <Video className="w-4 h-4" />
-              Join Call
-            </button>
-          )}
+
 
           {callActive && (
             <>

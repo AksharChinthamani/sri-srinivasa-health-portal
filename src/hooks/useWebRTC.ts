@@ -154,6 +154,12 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
           const unsubRoom = onSnapshot(roomRef, async (snapshot) => {
             if (!isMounted) return;
             const data = snapshot.data();
+
+            if (data?.ended) {
+              setConnectionState('disconnected');
+              return;
+            }
+
             if (data?.answer && !pc.currentRemoteDescription) {
               const rtcSessionDescription = new RTCSessionDescription(data.answer);
               await pc.setRemoteDescription(rtcSessionDescription);
@@ -178,6 +184,12 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
           const unsubRoom = onSnapshot(roomRef, async (snapshot) => {
             if (!isMounted) return;
             const data = snapshot.data();
+
+            if (data?.ended) {
+              setConnectionState('disconnected');
+              return;
+            }
+
             if (data?.offer && !pc.currentRemoteDescription) {
               const offerDescription = new RTCSessionDescription(data.offer);
               await pc.setRemoteDescription(offerDescription);
@@ -240,7 +252,10 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
     peerRef.current?.close();
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     setConnectionState('disconnected');
-  }, []);
+
+    const roomRef = doc(db, 'rooms', roomId);
+    updateDoc(roomRef, { ended: true }).catch(() => {});
+  }, [roomId]);
 
   return {
     connectionState,
