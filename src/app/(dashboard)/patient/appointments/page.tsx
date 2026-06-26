@@ -8,6 +8,8 @@ import { Calendar, Clock, FileText, CheckCircle, AlertTriangle, XCircle } from '
 import Link from 'next/link';
 import { LanguageContext } from "@/context/LanguageContext";
 import { getTranslation } from "@/lib/i18n";
+import { Modal } from '@/components/ui/Modal/Modal';
+import { Button } from '@/components/ui/Button/Button';
 
 export default function PatientAppointmentsPage() {
     const langContext = useContext(LanguageContext);
@@ -17,6 +19,7 @@ export default function PatientAppointmentsPage() {
   const [rescheduleAppId, setRescheduleAppId] = useState<string | null>(null);
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
+  const [cancelModal, setCancelModal] = useState<{ isOpen: boolean, appId: string, docName: string }>({ isOpen: false, appId: '', docName: '' });
 
   const { data: appointments = [], isLoading, error } = useQuery({
     queryKey: ['patientAppointments'],
@@ -38,13 +41,12 @@ export default function PatientAppointmentsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patientAppointments'] });
+      setCancelModal({ isOpen: false, appId: '', docName: '' });
     },
   });
 
   const handleCancel = (id: string, docName: string) => {
-    if (confirm(`Are you sure you want to cancel your appointment with ${docName}?`)) {
-      cancelMutation.mutate(id);
-    }
+    setCancelModal({ isOpen: true, appId: id, docName });
   };
 
   const rescheduleMutation = useMutation({
@@ -286,6 +288,26 @@ export default function PatientAppointmentsPage() {
           })
         )}
       </div>
+
+      <Modal
+        isOpen={cancelModal.isOpen}
+        onClose={() => setCancelModal({ isOpen: false, appId: '', docName: '' })}
+        title="Cancel Appointment"
+        description={`Are you sure you want to cancel your appointment with ${cancelModal.docName}?`}
+      >
+        <div className="flex justify-end gap-3 mt-6">
+          <Button variant="secondary" onClick={() => setCancelModal({ isOpen: false, appId: '', docName: '' })}>
+            Keep Appointment
+          </Button>
+          <Button 
+            variant="destructive" 
+            onClick={() => cancelMutation.mutate(cancelModal.appId)}
+            disabled={cancelMutation.isPending}
+          >
+            {cancelMutation.isPending ? 'Canceling...' : 'Yes, Cancel'}
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }
