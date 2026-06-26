@@ -318,13 +318,13 @@ Doctor: Okay, let me note down your vitals. Temperature is normal at 98.6F, and 
             autoPlay
             playsInline
             className={`w-full h-full object-cover transition-opacity duration-500 ${
-              rtc.connectionState === 'connected' ? 'opacity-100' : 'opacity-0 absolute'
+              rtc.connectionState === 'connected' ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'
             }`}
           />
 
           {/* Pre-connection placeholder */}
           {rtc.connectionState !== 'connected' && (
-            <div className="flex flex-col items-center justify-center gap-4 text-center px-6 select-none">
+            <div className="relative z-10 flex flex-col items-center justify-center gap-4 text-center px-6 select-none">
               {!callActive ? (
                 <>
                   <div className="w-24 h-24 rounded-full bg-teal-900/40 border border-teal-700/50 flex items-center justify-center mb-2">
