@@ -13,10 +13,10 @@ const publicRoutes = [
 
 // Routes each role can access. /api/ai and /api/auth are shared across all authenticated roles.
 const roleMap: Record<string, string[]> = {
-  ADMIN:      ['/admin', '/pharmacy', '/patient', '/doctor', '/staff', '/chat', '/consult', '/api/admin', '/api/ai', '/api/auth', '/api/appointments', '/api/doctors', '/api/medicines', '/api/orders', '/api/inventory', '/api/prescriptions', '/api/queue', '/api/patient', '/api/categories', '/api/subscriptions', '/api/pharmacy'],
+  ADMIN:      ['/admin', '/pharmacy', '/patient', '/doctor', '/staff', '/chat', '/consult', '/api/webrtc', '/api/admin', '/api/ai', '/api/auth', '/api/appointments', '/api/doctors', '/api/medicines', '/api/orders', '/api/inventory', '/api/prescriptions', '/api/queue', '/api/patient', '/api/categories', '/api/subscriptions', '/api/pharmacy'],
   PHARMACIST: ['/pharmacy', '/chat', '/api/ai', '/api/auth', '/api/medicines', '/api/orders', '/api/inventory', '/api/prescriptions', '/api/patient', '/api/categories', '/api/subscriptions', '/api/pharmacy'],
-  PATIENT:    ['/patient', '/chat', '/consult', '/api/ai', '/api/auth', '/api/patient', '/api/appointments', '/api/medicines', '/api/orders', '/api/prescriptions', '/api/doctors', '/api/queue', '/api/categories', '/api/subscriptions'],
-  DOCTOR:     ['/doctor', '/chat', '/consult', '/api/ai', '/api/auth', '/api/patient', '/api/appointments', '/api/prescriptions', '/api/doctors', '/api/categories'],
+  PATIENT:    ['/patient', '/chat', '/consult', '/api/webrtc', '/api/ai', '/api/auth', '/api/patient', '/api/appointments', '/api/medicines', '/api/orders', '/api/prescriptions', '/api/doctors', '/api/queue', '/api/categories', '/api/subscriptions'],
+  DOCTOR:     ['/doctor', '/chat', '/consult', '/api/webrtc', '/api/ai', '/api/auth', '/api/patient', '/api/appointments', '/api/prescriptions', '/api/doctors', '/api/categories'],
   STAFF:      ['/pharmacy', '/api/ai', '/api/auth'],
 };
 
