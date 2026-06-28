@@ -28,7 +28,10 @@ export default function InventoryManagementPage() {
   const [editingCell, setEditingCell] = useState<{ id: string, field: keyof InventoryItem } | null>(null);
   
   const [showPoModal, setShowPoModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
+  
+  const [newMed, setNewMed] = useState({ name: '', category: 'Antibiotic', stock: 0, expiryDate: '' });
 
   // Fetch medicines from the API
   const { data: medicines = [], isLoading } = useQuery({
@@ -63,6 +66,28 @@ export default function InventoryManagementPage() {
     },
     onError: (err: any) => {
       toastContext?.addToast(err.message || 'Failed to update inventory', 'error');
+    }
+  });
+
+  // Mutation to add new medicine
+  const addMedicineMutation = useMutation({
+    mutationFn: (newMedicine: any) =>
+      fetch('/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMedicine),
+      }).then((res) => {
+        if (!res.ok) throw new Error('Failed to add medicine');
+        return res.json();
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pharmacyInventory'] });
+      toastContext?.addToast('Medicine added to inventory', 'success');
+      setShowAddModal(false);
+      setNewMed({ name: '', category: 'Antibiotic', stock: 0, expiryDate: '' });
+    },
+    onError: (err: any) => {
+      toastContext?.addToast(err.message || 'Failed to add medicine', 'error');
     }
   });
 
@@ -149,6 +174,12 @@ export default function InventoryManagementPage() {
         </div>
         
         <div className="flex flex-wrap gap-3">
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            Add Medicine
+          </button>
           <button className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
             {getTranslation(language, 'auto.bulk_import_csv')}</button>
@@ -399,6 +430,89 @@ export default function InventoryManagementPage() {
                     {getTranslation(language, 'auto.processing')}</>
                 ) : (
                   'Approve PO & Export'
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Add Medicine Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowAddModal(false)}></div>
+          <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 max-w-lg w-full relative z-10 border border-slate-200 animate-in zoom-in-95 duration-200">
+            
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-slate-900">Add New Medicine</h2>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-700">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Medicine Name</label>
+                <input 
+                  type="text" 
+                  value={newMed.name}
+                  onChange={e => setNewMed({...newMed, name: e.target.value})}
+                  placeholder="e.g. Paracetamol 500mg"
+                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Category</label>
+                  <select 
+                    value={newMed.category}
+                    onChange={e => setNewMed({...newMed, category: e.target.value})}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none text-sm"
+                  >
+                    <option value="Antibiotic">Antibiotic</option>
+                    <option value="Analgesic">Analgesic</option>
+                    <option value="Antidiabetic">Antidiabetic</option>
+                    <option value="General">General</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Initial Stock</label>
+                  <input 
+                    type="number" 
+                    value={newMed.stock}
+                    onChange={e => setNewMed({...newMed, stock: parseInt(e.target.value) || 0})}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none text-sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Expiry Date</label>
+                <input 
+                  type="date" 
+                  value={newMed.expiryDate}
+                  onChange={e => setNewMed({...newMed, expiryDate: e.target.value})}
+                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setShowAddModal(false)}
+                className="flex-1 py-3 text-slate-600 font-bold bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => addMedicineMutation.mutate(newMed)}
+                disabled={addMedicineMutation.isPending || !newMed.name || !newMed.expiryDate}
+                className="flex-1 py-3 text-white font-bold bg-blue-600 rounded-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {addMedicineMutation.isPending ? (
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                ) : (
+                  'Add Medicine'
                 )}
               </button>
             </div>

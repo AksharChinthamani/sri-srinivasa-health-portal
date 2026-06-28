@@ -35,6 +35,7 @@ export interface WebRTCState {
   remoteVideoRef: React.RefObject<HTMLVideoElement>;
   toggleMute: () => void;
   toggleVideo: () => void;
+  sendMessage: (msg: string) => void;
   hangup: () => void;
   error: string | null;
 }
@@ -43,14 +44,32 @@ interface UseWebRTCOptions {
   roomId: string;
   userId: string;
   enabled?: boolean;
+  onMessageReceived?: (msg: string) => void;
 }
 
 const ICE_SERVERS: RTCIceServer[] = [
+  // Standard STUN servers for finding public IP
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
+  // TURN servers are REQUIRED for production to bypass strict NATs and firewalls
+  {
+    urls: 'turn:openrelay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject'
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject'
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject'
+  }
 ];
 
-export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions): WebRTCState {
+export function useWebRTC({ roomId, userId, enabled = false, onMessageReceived }: UseWebRTCOptions): WebRTCState {
   const [connectionState, setConnectionState] = useState<ConnectionState>('idle');
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
@@ -61,13 +80,21 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
 
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const dataChannelRef = useRef<RTCDataChannel | null>(null);
   
   const unsubscribesRef = useRef<Array<() => void>>([]);
+  const onMessageReceivedRef = useRef(onMessageReceived);
+
+  useEffect(() => {
+    onMessageReceivedRef.current = onMessageReceived;
+  }, [onMessageReceived]);
 
   useEffect(() => {
     if (!enabled || !roomId || !userId) return;
 
     let isMounted = true;
+    let hasProcessedOffer = false;
+    let hasProcessedAnswer = false;
 
     const init = async () => {
       try {
@@ -106,6 +133,18 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
 
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
+        // Set up Data Channel for chat
+        const setupDataChannel = (channel: RTCDataChannel) => {
+          channel.onmessage = (event) => {
+            onMessageReceivedRef.current?.(event.data);
+          };
+          dataChannelRef.current = channel;
+        };
+
+        pc.ondatachannel = (event) => {
+          setupDataChannel(event.channel);
+        };
+
         pc.ontrack = (event) => {
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = event.streams[0];
@@ -130,26 +169,30 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
         // 3. Join Room via Firestore
         const roomRef = doc(db, 'rooms', roomId);
         let role: 'host' | 'guest' = 'guest';
+        let sessionId = '';
 
         await runTransaction(db, async (transaction) => {
           const roomDoc = await transaction.get(roomRef);
           if (!roomDoc.exists()) {
             role = 'host';
-            transaction.set(roomRef, { hostId: userId, guestId: null });
+            sessionId = Date.now().toString();
+            transaction.set(roomRef, { hostId: userId, guestId: null, sessionId });
           } else {
             const data = roomDoc.data();
             if (data.hostId === userId || data.ended) {
               role = 'host';
-              transaction.set(roomRef, { hostId: userId, guestId: null });
+              sessionId = Date.now().toString();
+              transaction.set(roomRef, { hostId: userId, guestId: null, sessionId });
             } else {
               role = 'guest';
+              sessionId = data.sessionId || Date.now().toString();
               transaction.update(roomRef, { guestId: userId, ended: false });
             }
           }
         });
 
-        const callerCandidatesCollection = collection(roomRef, 'callerCandidates');
-        const calleeCandidatesCollection = collection(roomRef, 'calleeCandidates');
+        const callerCandidatesCollection = collection(roomRef, 'callerCandidates', sessionId, 'items');
+        const calleeCandidatesCollection = collection(roomRef, 'calleeCandidates', sessionId, 'items');
 
         pc.onicecandidate = (event) => {
           if (!event.candidate) return;
@@ -163,8 +206,14 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
         if (role === 'host') {
           setConnectionState('waiting');
 
+          // Host creates the data channel
+          const dc = pc.createDataChannel('chat');
+          setupDataChannel(dc);
+
           const offer = await pc.createOffer();
+          if (!isMounted) return;
           await pc.setLocalDescription(offer);
+          if (!isMounted) return;
           await updateDoc(roomRef, { offer: { type: offer.type, sdp: offer.sdp } });
 
           const unsubRoom = onSnapshot(roomRef, async (snapshot) => {
@@ -173,12 +222,16 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
 
             if (data?.ended) {
               setConnectionState('disconnected');
+              peerRef.current?.close();
+              localStreamRef.current?.getTracks().forEach((t) => t.stop());
               return;
             }
 
-            if (data?.answer && !pc.currentRemoteDescription) {
+            if (data?.answer && !hasProcessedAnswer) {
+              hasProcessedAnswer = true;
               const rtcSessionDescription = new RTCSessionDescription(data.answer);
               await pc.setRemoteDescription(rtcSessionDescription);
+              if (!isMounted) return;
               setConnectionState('connecting');
 
               const unsubCallee = onSnapshot(calleeCandidatesCollection, (snapshot) => {
@@ -203,15 +256,21 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
 
             if (data?.ended) {
               setConnectionState('disconnected');
+              peerRef.current?.close();
+              localStreamRef.current?.getTracks().forEach((t) => t.stop());
               return;
             }
 
-            if (data?.offer && !pc.currentRemoteDescription) {
+            if (data?.offer && !hasProcessedOffer) {
+              hasProcessedOffer = true;
               const offerDescription = new RTCSessionDescription(data.offer);
               await pc.setRemoteDescription(offerDescription);
+              if (!isMounted) return;
               
               const answer = await pc.createAnswer();
+              if (!isMounted) return;
               await pc.setLocalDescription(answer);
+              if (!isMounted) return;
               await updateDoc(roomRef, { answer: { type: answer.type, sdp: answer.sdp } });
 
               const unsubCaller = onSnapshot(callerCandidatesCollection, (snapshot) => {
@@ -262,6 +321,14 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
     setIsVideoOff((prev) => !prev);
   }, []);
 
+  const sendMessage = useCallback((msg: string) => {
+    if (dataChannelRef.current?.readyState === 'open') {
+      dataChannelRef.current.send(msg);
+    } else {
+      console.warn('Data channel is not open');
+    }
+  }, []);
+
   const hangup = useCallback(() => {
     unsubscribesRef.current.forEach((unsub) => unsub());
     unsubscribesRef.current = [];
@@ -281,6 +348,7 @@ export function useWebRTC({ roomId, userId, enabled = false }: UseWebRTCOptions)
     remoteVideoRef,
     toggleMute,
     toggleVideo,
+    sendMessage,
     hangup,
     error,
   };

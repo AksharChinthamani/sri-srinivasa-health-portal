@@ -1,6 +1,6 @@
 'use client';
 import { useState, useContext } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LanguageContext } from '@/context/LanguageContext';
 import { getTranslation } from '@/lib/i18n';
 import { format, isSameDay } from 'date-fns';
@@ -22,6 +22,7 @@ export default function BookAppointmentPage() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const router = useRouter();
   const toastContext = useContext(ToastContext);
+  const queryClient = useQueryClient();
 
   // Fetch doctors for the selected date
   const { data: doctors = [], isLoading } = useQuery<any[]>({
@@ -76,6 +77,7 @@ export default function BookAppointmentPage() {
 
       toastContext?.addToast('Appointment booked successfully!', 'success');
       setShowConfirmation(false);
+      queryClient.invalidateQueries({ queryKey: ['patientDashboard'] });
       router.push('/patient/dashboard');
     } catch (error: any) {
       console.error('Booking error:', error);

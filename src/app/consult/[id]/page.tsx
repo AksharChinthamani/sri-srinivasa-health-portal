@@ -122,6 +122,14 @@ export default function VirtualConsultPage({ params }: { params: { id: string } 
     roomId: params.id,
     userId: user?.id ?? 'anonymous',
     enabled: callActive,
+    onMessageReceived: (data) => {
+      try {
+        const msg = JSON.parse(data);
+        setChatMessages((prev) => [...prev, msg]);
+      } catch (err) {
+        console.error('Failed to parse chat message', err);
+      }
+    }
   });
 
   // Show toast on WebRTC error
@@ -261,10 +269,19 @@ Doctor: Okay, let me note down your vitals. Temperature is normal at 98.6F, and 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
-    setChatMessages([
-      ...chatMessages,
-      { sender: user?.name || 'You', text: newMessage, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
-    ]);
+
+    const newMsg = { 
+      sender: user?.name || 'You', 
+      text: newMessage, 
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+    };
+
+    setChatMessages((prev) => [...prev, newMsg]);
+    
+    // Broadcast message via WebRTC with our actual name for the remote peer
+    const remoteMsg = { ...newMsg, sender: user?.name || (isDoctor ? 'Doctor' : 'Patient') };
+    rtc.sendMessage(JSON.stringify(remoteMsg));
+
     setNewMessage('');
   };
 
