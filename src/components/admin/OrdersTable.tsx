@@ -66,7 +66,7 @@ export function OrdersTable({ orders, onStatusUpdate }: OrdersTableProps) {
                     )}
                   </td>
                   <td className="p-4 font-semibold text-slate-900">
-                    ${order.total.toFixed(2)}
+                    ₹{order.total.toFixed(2)}
                   </td>
                   <td className="p-4 text-slate-500">
                     {format(new Date(order.createdAt), 'MMM d, yyyy')}

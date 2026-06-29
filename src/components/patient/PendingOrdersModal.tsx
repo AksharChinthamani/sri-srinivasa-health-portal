@@ -90,7 +90,7 @@ export default function PendingOrdersModal({ isOpen, onClose }: PendingOrdersMod
                       </p>
                     </div>
                     <div className="text-right">
-                      {order.total > 0 && <p className="text-lg font-bold text-slate-900">${order.total.toFixed(2)}</p>}
+                      {order.total > 0 && <p className="text-lg font-bold text-slate-900">₹{order.total.toFixed(2)}</p>}
                       <button 
                         onClick={() => {
                           if (confirm('Are you sure you want to cancel this order?')) {
@@ -114,7 +114,7 @@ export default function PendingOrdersModal({ isOpen, onClose }: PendingOrdersMod
                             <span className="text-slate-400 mr-2">{item.quantity}x</span> 
                             {item.name} {item.dosage && `(${item.dosage})`}
                           </span>
-                          {item.price > 0 && <span className="text-slate-500">${(item.price * item.quantity).toFixed(2)}</span>}
+                          {item.price > 0 && <span className="text-slate-500">₹{(item.price * item.quantity).toFixed(2)}</span>}
                         </li>
                       ))}
                     </ul>

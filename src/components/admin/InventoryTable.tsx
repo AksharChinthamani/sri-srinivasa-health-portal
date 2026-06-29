@@ -86,7 +86,7 @@ export function InventoryTable({ medicines, isLoading }: InventoryTableProps) {
                     <td className="p-4 pl-6 font-bold text-slate-900">{med.name}</td>
                     <td className="p-4 text-slate-600">{med.dosage}</td>
                     <td className="p-4 text-slate-600 font-medium">{med.category}</td>
-                    <td className="p-4 font-semibold text-slate-800">${med.price.toFixed(2)}</td>
+                    <td className="p-4 font-semibold text-slate-800">₹{med.price.toFixed(2)}</td>
                     <td className="p-4 font-mono font-semibold">
                       <span
                         className={
