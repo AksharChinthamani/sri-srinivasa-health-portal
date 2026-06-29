@@ -82,12 +82,12 @@ export default function PatientAppointmentsPage() {
   today.setHours(0, 0, 0, 0);
 
   const upcomingAppointments = appointments.filter((app: any) => {
-    const appDate = new Date(app.date);
+    const appDate = new Date(app.date + 'T00:00:00');
     return app.status !== 'CANCELLED' && (isAfter(appDate, today) || app.status === 'PENDING' || app.status === 'CONFIRMED');
   });
 
   const pastAppointments = appointments.filter((app: any) => {
-    const appDate = new Date(app.date);
+    const appDate = new Date(app.date + 'T00:00:00');
     return app.status === 'CANCELLED' || (!isAfter(appDate, today) && app.status !== 'PENDING' && app.status !== 'CONFIRMED');
   });
 
@@ -185,7 +185,7 @@ export default function PatientAppointmentsPage() {
           </div>
         ) : (
           displayAppointments.map((app: any) => {
-            const formattedDate = format(new Date(app.date), 'PPP');
+            const formattedDate = format(new Date(app.date + 'T00:00:00'), 'PPP');
             const docName = app.doctor?.user?.name || 'Unknown Doctor';
             const specialty = app.doctor?.specialty || 'General Practitioner';
             const isPendingOrConfirmed = app.status === 'PENDING' || app.status === 'CONFIRMED';

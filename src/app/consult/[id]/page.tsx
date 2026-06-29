@@ -239,6 +239,7 @@ Doctor: Okay, let me note down your vitals. Temperature is normal at 98.6F, and 
     queryKey: ['patientPrescriptions'],
     queryFn: () => fetch('/api/prescriptions').then((res) => res.json()),
     enabled: !!appointment && !isDoctor,
+    refetchInterval: 3000,
   });
 
   const currentPrescription = prescriptionsList.find(
@@ -400,18 +401,21 @@ Doctor: Okay, let me note down your vitals. Temperature is normal at 98.6F, and 
                     )}
                     <div>
                       <label className="text-[10px] text-slate-400 font-bold block mb-1">{getTranslation(language, 'auto.medicine_name')}</label>
-                      <select
+                      <input
+                        type="text"
+                        list="medicines-list"
                         value={med.medicineName}
                         onChange={(e) => handleMedicineChange(index, 'medicineName', e.target.value)}
+                        placeholder={getTranslation(language, 'auto.select_from_inventory') || 'Type medicine name'}
                         className="w-full bg-slate-800 px-2.5 py-1.5 rounded text-xs border border-slate-700 outline-none focus:border-teal-500"
-                      >
-                        <option value="">{getTranslation(language, 'auto.select_from_inventory')}</option>
+                      />
+                      <datalist id="medicines-list">
                         {medicinesList.map((m) => (
-                          <option key={m.id} value={m.name} disabled={m.stock <= 0}>
+                          <option key={m.id} value={m.name}>
                             {m.name} ({m.category}) {m.stock <= 0 ? '[OUT OF STOCK]' : `[Stock: ${m.stock}]`}
                           </option>
                         ))}
-                      </select>
+                      </datalist>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       {(['dosage', 'frequency', 'duration'] as const).map((field) => (

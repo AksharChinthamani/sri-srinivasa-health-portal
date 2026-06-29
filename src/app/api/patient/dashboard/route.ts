@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
       upcomingAppointment: upcomingAppointment ? {
         id: upcomingAppointment.id,
         status: upcomingAppointment.status?.toUpperCase(),
-        date: upcomingAppointment.date + 'T' + (upcomingAppointment.time || '00:00') + ':00.000Z',
+        date: upcomingAppointment.date + 'T' + (upcomingAppointment.time || '00:00') + ':00',
         doctor: doctorName,
         specialty: doctorSpecialty,
       } : null,
