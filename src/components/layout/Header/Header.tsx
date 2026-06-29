@@ -91,20 +91,7 @@ export const Header: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-3 md:gap-4">
-        {/* Language Toggle */}
-        <div className="flex bg-slate-100 rounded-md p-0.5">
-          {['en', 'hi', 'te'].map((lang) => (
-            <button
-              key={lang}
-              onClick={() => changeLanguage(lang)}
-              className={`px-2 py-1 text-xs font-medium rounded ${
-                language === lang ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {lang.toUpperCase()}
-            </button>
-          ))}
-        </div>
+
 
         {/* Notification Bell with Badge */}
         <button 
